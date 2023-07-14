@@ -10,7 +10,8 @@ import {
 import {Dispatch} from 'redux'
 import {AppRootStateType} from '../../app/store'
 import {setErrorAC, SetErrorACType, setStatusAC, SetStatusACType} from "../../app/appReducer";
-import {handleServerNetworkError} from "../../utils/error-utils";
+import {handleServerAppError, handleServerNetworkError} from "../../utils/error-utils";
+import {AxiosError} from "axios";
 
 const initialState: TasksStateType = {}
 
@@ -77,7 +78,7 @@ export const removeTaskTC = (taskId: string, todolistId: string) => (dispatch: D
         })
 }
 
-export const addTaskTC = (title: string, todolistId: string) => (dispatch: Dispatch<ActionsType>) => {
+export const addTaskTC = (title: string, todolistId: string) =>  (dispatch: Dispatch<ActionsType>) => {
     dispatch(setStatusAC('loading'))
     todolistsAPI.createTask(todolistId, title)
         .then(res => {
@@ -90,19 +91,23 @@ export const addTaskTC = (title: string, todolistId: string) => (dispatch: Dispa
                 dispatch(setStatusAC('succeeded'))
 
             } else {
-                const error = res.data.messages[0]
-
-                if (error) {
-                    dispatch(setErrorAC(error))
-                } else {
-                    dispatch(setErrorAC('Some error'))
-                }
-                dispatch(setStatusAC('failed'))
+                handleServerAppError<{ item: TaskType }>(res.data, dispatch)
             }
         })
         .catch(e => {
             handleServerNetworkError(e.message, dispatch)
         })
+}
+
+type ErrorType = {
+    statusCode: number,
+    messages: [
+        {
+            message: string,
+            field: string
+        }
+    ],
+    error: string
 }
 
 export const updateTaskTC = (taskId: string, domainModel: UpdateDomainTaskModelType, todolistId: string) =>
@@ -128,25 +133,17 @@ export const updateTaskTC = (taskId: string, domainModel: UpdateDomainTaskModelT
 
         todolistsAPI.updateTask(todolistId, taskId, apiModel)
             .then(res => {
-                if(res.data.resultCode === Result_Code.SUCCESS) {
+                if (res.data.resultCode === Result_Code.SUCCESS) {
                     const action = updateTaskAC(taskId, domainModel, todolistId)
                     dispatch(action)
                     dispatch(setStatusAC('succeeded'))
                 } else {
-                    const error = res.data.messages[0]
-
-                    if(error) {
-                        dispatch(setErrorAC(error))
-                    } else {
-                        dispatch(setErrorAC('Some error'))
-                    }
-
-                    dispatch(setStatusAC('failed'))
+                    handleServerAppError(res.data, dispatch)
                 }
             })
-            .catch(e => {
-                dispatch(setErrorAC(e.message))
-                dispatch(setStatusAC('failed'))
+            .catch((e: AxiosError<ErrorType>) => {
+                const error = e.response ? e.response?.data.messages[0].message : e.message
+                handleServerNetworkError(error, dispatch)
             })
     }
 
