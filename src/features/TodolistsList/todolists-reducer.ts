@@ -1,9 +1,7 @@
 import { todolistsAPI, TodolistType} from '../../api/todolists-api'
 import {Dispatch} from 'redux'
 import {RequestStatusType, setErrorAC, SetErrorACType, setStatusAC, SetStatusACType} from "../../app/appReducer";
-import {handleServerAppError, handleServerNetworkError} from "../../utils/error-utils";
-import {AxiosError} from "axios";
-import {ErrorType} from "./tasks-reducer";
+import {handleServerAppError} from "../../utils/error-utils";
 
 const initialState: Array<TodolistDomainType> = []
 
@@ -46,8 +44,6 @@ export const changeTodolistFilterAC = (id: string, filter: FilterValuesType) => 
 } as const)
 export const setTodolistsAC = (todolists: Array<TodolistType>) => ({type: 'SET-TODOLISTS', todolists} as const)
 
-
-
 // thunks
 export const fetchTodolistsTC = () => {
     return (dispatch: Dispatch<ActionsType>) => {
@@ -56,10 +52,6 @@ export const fetchTodolistsTC = () => {
             .then((res) => {
                 dispatch(setTodolistsAC(res.data))
                 dispatch(setStatusAC('succeeded'))
-            })
-            .catch((e: AxiosError<ErrorType>) => {
-                const error = e.response ? e.response?.data.messages[0].message : e.message
-                handleServerNetworkError(error, dispatch)
             })
     }
 }
@@ -74,8 +66,8 @@ export const removeTodolistTC = (todolistId: string) => {
             })
             .catch((e) => {
                 dispatch(changeTodolistStatusAC(todolistId, 'idle'))
-                const error = e.response ? e.response?.data.messages[0].message : e.message
-                handleServerNetworkError(error, dispatch)
+                dispatch(setErrorAC(e.message))
+                dispatch(setStatusAC('failed'))
             })
     }
 }
@@ -86,6 +78,7 @@ export const addTodolistTC = (title: string) => {
             .then((res) => {
                 handleServerAppError<{ item: TodolistType }>(res.data, dispatch)
                 dispatch(setStatusAC('succeeded'))
+                dispatch(addTodolistAC(res.data.data.item))
             })
     }
 }
