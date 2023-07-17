@@ -4,8 +4,8 @@
 export type RequestStatusType = 'idle' | 'loading' | 'succeeded' | 'failed'
 
 const initialState = {
-    status: 'loading' as RequestStatusType,
-    error: null as string | null
+    status: 'loading' as RequestStatusType, //preloader
+    error: null as string | null // notification error
 }
 
 export type InitialStateType = typeof initialState

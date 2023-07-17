@@ -64,19 +64,31 @@ export const fetchTasksTC = (todolistId: string) => (dispatch: Dispatch<ActionsT
     dispatch(setStatusAC('loading'))
     todolistsAPI.getTasks(todolistId)
         .then((res) => {
-            const tasks = res.data.items
-            const action = setTasksAC(tasks, todolistId)
-            dispatch(action)
-            dispatch(setStatusAC('succeeded'))
+                const tasks = res.data.items
+                const action = setTasksAC(tasks, todolistId)
+                dispatch(action)
+                dispatch(setStatusAC('succeeded'))
+        })
+        .catch((e: AxiosError<ErrorType>) => {
+            const error = e.response ? e.response?.data.messages[0].message : e.message
+            handleServerNetworkError(error, dispatch)
         })
 }
 export const removeTaskTC = (taskId: string, todolistId: string) => (dispatch: Dispatch<ActionsType>) => {
     dispatch(setStatusAC('loading'))
     todolistsAPI.deleteTask(todolistId, taskId)
         .then(res => {
-            const action = removeTaskAC(taskId, todolistId)
-            dispatch(action)
-            dispatch(setStatusAC('succeeded'))
+            if (res.data.resultCode === Result_Code.SUCCESS) {
+                const action = removeTaskAC(taskId, todolistId)
+                dispatch(action)
+                dispatch(setStatusAC('succeeded'))
+            } else {
+                handleServerAppError(res.data, dispatch)
+            }
+        })
+        .catch((e: AxiosError<ErrorType>) => {
+            const error = e.response ? e.response?.data.messages[0].message : e.message
+            handleServerNetworkError(error, dispatch)
         })
 }
 
@@ -94,7 +106,7 @@ export const addTaskTC = (title: string, todolistId: string) => async (dispatch:
             handleServerAppError<{ item: TaskType }>(res.data, dispatch)
         }
     } catch (e) {
-        if(axios.isAxiosError<ErrorType>(e)) {
+        if (axios.isAxiosError<ErrorType>(e)) {
             const error = e.response ? e.response?.data.messages[0].message : e.message
             handleServerNetworkError(error, dispatch)
             return
@@ -102,30 +114,9 @@ export const addTaskTC = (title: string, todolistId: string) => async (dispatch:
         const error = (e as Error).message
         handleServerNetworkError(error, dispatch)
     }
-
-// .catch((e: AxiosError<ErrorType>) => {
-//         const error = e.response ? e.response?.data.messages[0].message : e.message
-//         handleServerNetworkError(error, dispatch)
-//     })
-    // .then(res => {
-    //
-    //     if (res.data.resultCode === Result_Code.SUCCESS) {
-    //         const task = res.data.data.item
-    //         const action = addTaskAC(task)
-    //
-    //         dispatch(action)
-    //         dispatch(setStatusAC('succeeded'))
-    //
-    //     } else {
-    //         handleServerAppError<{ item: TaskType }>(res.data, dispatch)
-    //     }
-    // })
-    // .catch(e => {
-    //     handleServerNetworkError(e.message, dispatch)
-    // })
 }
 
-type ErrorType = {
+export type ErrorType = {
     statusCode: number,
     messages: [
         {
